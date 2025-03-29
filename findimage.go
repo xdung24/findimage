@@ -153,7 +153,7 @@ func findImage(imgsrc image.Image, subsrc image.Image, opts Opts) []Match {
 
 			divTopMatch := divMatches[0]
 			if opts.verbose {
-				log.Printf("image size: %dx%d, subimage size: %dx%d, div: %d, match: %f %v\n", imgWidth, imgHeight, sw, sh, div, divTopMatch.Match, divTopMatch.Bounds)
+				log.Printf("image size: %dx%d, subimage size: %dx%d, div: %d, match: %f %v\n", imgWidth, imgHeight, sw, sh, div, divTopMatch.Confident, divTopMatch.Bounds)
 			}
 			if opts.visualize {
 				subrun.Visualized = visualizeMatches(img, divMatches)
@@ -162,12 +162,12 @@ func findImage(imgsrc image.Image, subsrc image.Image, opts Opts) []Match {
 			subrun.Matches = divMatches.Scale(1 / imgScale)
 			run.Subruns = append(run.Subruns, subrun)
 
-			if divTopMatch.Match < lastTopMatch {
+			if divTopMatch.Confident < lastTopMatch {
 				run.Subruns[len(run.Subruns)-2].Selected = true
 				done = true
 				break
 			}
-			lastTopMatch = divTopMatch.Match
+			lastTopMatch = divTopMatch.Confident
 			matches = divMatches
 		}
 		if done {
@@ -205,7 +205,7 @@ func visualizeMatches(img image.Image, matches []Match) image.Image {
 		m := matches[i]
 
 		// Calculate the color based on match
-		v := 1 - math.Min(1, (1-m.Match)*10)
+		v := 1 - math.Min(1, (1-m.Confident)*10)
 		red := uint8(255 * (1 - v))
 		green := uint8(255)
 		blue := uint8(255 * (1 - v))
@@ -349,10 +349,17 @@ func sumOfAbsDiffRGBA(img *image.RGBA, x int, y int, subimg *image.RGBA) uint32 
 }
 
 type Match struct {
-	Bounds image.Rectangle `json:"bounds"`
-	Match  float64         `json:"match"`
+	Bounds    image.Rectangle `json:"bounds"`
+	Confident float64         `json:"confident"`
 }
 
+func (m Match) CenterX() int {
+	return (int)(m.Bounds.Min.X + m.Bounds.Dx()/2)
+}
+
+func (m Match) CenterY() int {
+	return (int)(m.Bounds.Min.Y + m.Bounds.Dy()/2)
+}
 func (m Match) MarshalJSON() ([]byte, error) {
 	type Bounds struct {
 		X int `json:"x"`
@@ -361,8 +368,9 @@ func (m Match) MarshalJSON() ([]byte, error) {
 		H int `json:"h"`
 	}
 	return json.Marshal(struct {
-		Bounds Bounds  `json:"bounds"`
-		Match  float64 `json:"match"`
+		Bounds    Bounds      `json:"bounds"`
+		Center    image.Point `json:"center"`
+		Confident float64     `json:"confident"`
 	}{
 		Bounds: Bounds{
 			X: m.Bounds.Min.X,
@@ -370,7 +378,11 @@ func (m Match) MarshalJSON() ([]byte, error) {
 			W: m.Bounds.Dx(),
 			H: m.Bounds.Dy(),
 		},
-		Match: m.Match,
+		Center: image.Point{
+			X: m.CenterX(),
+			Y: m.CenterY(),
+		},
+		Confident: m.Confident,
 	})
 }
 
@@ -412,7 +424,7 @@ func convolutionTopK(img *image.RGBA, subimg *image.RGBA, k int) Matches {
 
 			// Check if the current match is one of the top k matches
 			if len(matches) < k {
-				matches = append(matches, Match{Bounds: bounds, Match: float64(sum)})
+				matches = append(matches, Match{Bounds: bounds, Confident: float64(sum)})
 				minSums = append(minSums, sum)
 			} else {
 				maxDiffIndex := 0
@@ -422,7 +434,7 @@ func convolutionTopK(img *image.RGBA, subimg *image.RGBA, k int) Matches {
 					}
 				}
 				if sum < minSums[maxDiffIndex] {
-					matches[maxDiffIndex] = Match{Bounds: bounds, Match: float64(sum)}
+					matches[maxDiffIndex] = Match{Bounds: bounds, Confident: float64(sum)}
 					minSums[maxDiffIndex] = sum
 				}
 			}
@@ -431,11 +443,11 @@ func convolutionTopK(img *image.RGBA, subimg *image.RGBA, k int) Matches {
 
 	norm := 1 / float64(subimgr.Max.X*subimgr.Max.Y*0xFF*3)
 	for i := 0; i < len(matches); i++ {
-		matches[i].Match = 1 - matches[i].Match*norm
+		matches[i].Confident = 1 - matches[i].Confident*norm
 	}
 
 	sort.Slice(matches, func(i, j int) bool {
-		return matches[i].Match > matches[j].Match
+		return matches[i].Confident > matches[j].Confident
 	})
 
 	return matches
@@ -492,7 +504,7 @@ func convolutionTopKParallel(img *image.RGBA, subimg *image.RGBA, k int) Matches
 
 					// Check if the current match is one of the top k matches
 					if len(matches) < k {
-						matches = append(matches, Match{Bounds: bounds, Match: float64(sum)})
+						matches = append(matches, Match{Bounds: bounds, Confident: float64(sum)})
 						minSums = append(minSums, sum)
 					} else {
 						maxDiffIndex := 0
@@ -502,7 +514,7 @@ func convolutionTopKParallel(img *image.RGBA, subimg *image.RGBA, k int) Matches
 							}
 						}
 						if sum < minSums[maxDiffIndex] {
-							matches[maxDiffIndex] = Match{Bounds: bounds, Match: float64(sum)}
+							matches[maxDiffIndex] = Match{Bounds: bounds, Confident: float64(sum)}
 							minSums[maxDiffIndex] = sum
 						}
 					}
@@ -537,7 +549,7 @@ func convolutionTopKParallel(img *image.RGBA, subimg *image.RGBA, k int) Matches
 	sort.Slice(matches, func(i, j int) bool {
 		// These are not matches, but rather the sum of absolute differences,
 		// so we need to sort them in reverse order.
-		return matches[i].Match < matches[j].Match
+		return matches[i].Confident < matches[j].Confident
 	})
 
 	// Keep only the top k matches
@@ -546,7 +558,7 @@ func convolutionTopKParallel(img *image.RGBA, subimg *image.RGBA, k int) Matches
 	// Normalize
 	norm := 1 / float64(subimgr.Max.X*subimgr.Max.Y*0xFF*3)
 	for i := 0; i < len(matches); i++ {
-		matches[i].Match = 1 - matches[i].Match*norm
+		matches[i].Confident = 1 - matches[i].Confident*norm
 	}
 
 	return matches

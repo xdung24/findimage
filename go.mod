@@ -1,4 +1,4 @@
-module tapimage
+module findimage
 
 go 1.24.0
 

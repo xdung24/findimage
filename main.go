@@ -97,12 +97,14 @@ func main() {
 	default:
 		for _, match := range matches {
 			fmt.Printf(
-				"%6f %4d %4d %4d %4d\n",
-				match.Match,
+				"%6f %4d %4d %4d %4d %4d %4d\n",
+				match.Confident,
 				match.Bounds.Min.X,
 				match.Bounds.Min.Y,
 				match.Bounds.Dx(),
 				match.Bounds.Dy(),
+				match.CenterX,
+				match.CenterY,
 			)
 		}
 	}
