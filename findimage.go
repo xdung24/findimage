@@ -354,11 +354,11 @@ type Match struct {
 }
 
 func (m Match) CenterX() int {
-	return (int)(m.Bounds.Min.X + m.Bounds.Dx()/2)
+	return (int)((m.Bounds.Min.X + m.Bounds.Dx()) / 2)
 }
 
 func (m Match) CenterY() int {
-	return (int)(m.Bounds.Min.Y + m.Bounds.Dy()/2)
+	return (int)((m.Bounds.Min.Y + m.Bounds.Dy()) / 2)
 }
 func (m Match) MarshalJSON() ([]byte, error) {
 	type Bounds struct {
