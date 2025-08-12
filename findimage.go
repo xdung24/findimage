@@ -174,6 +174,10 @@ func findImage(imgsrc image.Image, subsrc image.Image, opts Opts) []Match {
 			break
 		}
 	}
+	// sort matches result by confident value, from high to low
+	sort.Slice(matches, func(i, j int) bool {
+		return matches[i].Confident > matches[j].Confident
+	})
 
 	return matches
 }

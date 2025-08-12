@@ -103,8 +103,8 @@ func main() {
 				match.Bounds.Min.Y,
 				match.Bounds.Dx(),
 				match.Bounds.Dy(),
-				match.CenterX,
-				match.CenterY,
+				match.CenterX(),
+				match.CenterY(),
 			)
 		}
 	}
