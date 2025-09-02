@@ -10,5 +10,6 @@ findimage
 tapimage
 tapimage.exe
 tapimage.test.exe
+findimg-linux-*
 output.html
 result.html
