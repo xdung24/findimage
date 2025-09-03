@@ -16,6 +16,7 @@ import (
 	"sort"
 	"sync"
 
+	_ "golang.org/x/image/bmp"
 	"golang.org/x/image/draw"
 )
 
@@ -78,6 +79,20 @@ var DEFAULT_OPTS = Opts{
 	subMinArea:  5 * 5,
 	html:        false,
 	verbose:     false,
+}
+
+func toRGBA(img image.Image) *image.RGBA {
+	if rgba, ok := img.(*image.RGBA); ok {
+		return rgba
+	}
+	bounds := img.Bounds()
+	rgba := image.NewRGBA(bounds)
+	for y := bounds.Min.Y; y < bounds.Max.Y; y++ {
+		for x := bounds.Min.X; x < bounds.Max.X; x++ {
+			rgba.Set(x, y, img.At(x, y))
+		}
+	}
+	return rgba
 }
 
 func findImage(imgsrc image.Image, subsrc image.Image, opts Opts) []Match {
@@ -358,18 +373,16 @@ type Match struct {
 }
 
 func (m Match) CenterX() int {
-	return (int)((m.Bounds.Min.X + m.Bounds.Dx()) / 2)
+	return (int)(m.Bounds.Min.X + (m.Bounds.Dx() / 2))
 }
 
 func (m Match) CenterY() int {
-	return (int)((m.Bounds.Min.Y + m.Bounds.Dy()) / 2)
+	return (int)(m.Bounds.Min.Y + (m.Bounds.Dy() / 2))
 }
 func (m Match) MarshalJSON() ([]byte, error) {
 	type Bounds struct {
 		X int `json:"x"`
 		Y int `json:"y"`
-		W int `json:"w"`
-		H int `json:"h"`
 	}
 	return json.Marshal(struct {
 		Bounds    Bounds      `json:"bounds"`
@@ -379,8 +392,6 @@ func (m Match) MarshalJSON() ([]byte, error) {
 		Bounds: Bounds{
 			X: m.Bounds.Min.X,
 			Y: m.Bounds.Min.Y,
-			W: m.Bounds.Dx(),
-			H: m.Bounds.Dy(),
 		},
 		Center: image.Point{
 			X: m.CenterX(),

@@ -209,23 +209,74 @@ func BenchmarkFindImageLarge(b *testing.B) {
 	}
 }
 
+func BenchmarkFindImageFormats(b *testing.B) {
+	formats := []struct {
+		name    string
+		srcFile string
+		subFile string
+	}{
+		{"bmp", "test_images/haystack.bmp", "test_images/needle.bmp"},
+		{"png", "test_images/haystack.png", "test_images/needle.png"},
+		{"jpg", "test_images/haystack.jpg", "test_images/needle.jpg"},
+	}
+	for _, format := range formats {
+		b.Run(format.name, func(b *testing.B) {
+			imgsrc, err := openImage(format.srcFile)
+			if err != nil {
+				b.Fatalf("failed to open %s: %v", format.srcFile, err)
+			}
+			needle, err := openImage(format.subFile)
+			if err != nil {
+				b.Fatalf("failed to open %s: %v", format.subFile, err)
+			}
+			opts := Opts{k: 1}
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				findImage(imgsrc, needle, opts)
+			}
+		})
+	}
+}
+
+func BenchmarkFindImage_BitmapDirect(b *testing.B) {
+	imgsrc, _ := openImage("test_images/test.png")
+	needle, _ := openImage("test_images/x.png")
+	opts := Opts{k: 1}
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		findImage(imgsrc, needle, opts)
+	}
+}
+
+func BenchmarkFindImage_ConvertToRGBA(b *testing.B) {
+	imgsrc, _ := openImage("test_images/test.bmp")
+	needle, _ := openImage("test_images/x.png")
+	opts := Opts{k: 1}
+	imgsrcRGBA := toRGBA(imgsrc)
+	needleRGBA := toRGBA(needle)
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		findImage(imgsrcRGBA, needleRGBA, opts)
+	}
+}
+
 // Integration test using actual files
 func TestIntegrationWithFiles(t *testing.T) {
-	// Skip this test if the assets don't exist
-	if _, err := os.Stat("assets/haystack.jpg"); os.IsNotExist(err) {
-		t.Skip("Skipping integration test: assets/haystack.jpg not found")
+	// Skip this test if the test_images don't exist
+	if _, err := os.Stat("test_images/haystack.jpg"); os.IsNotExist(err) {
+		t.Skip("Skipping integration test: test_images/haystack.jpg not found")
 	}
-	if _, err := os.Stat("assets/needle.jpg"); os.IsNotExist(err) {
-		t.Skip("Skipping integration test: assets/needle.jpg not found")
+	if _, err := os.Stat("test_images/needle.jpg"); os.IsNotExist(err) {
+		t.Skip("Skipping integration test: test_images/needle.jpg not found")
 	}
 
 	// Open the actual test images
-	haystack, err := openImage("assets/haystack.jpg")
+	haystack, err := openImage("test_images/haystack.jpg")
 	if err != nil {
 		t.Fatalf("Failed to open haystack image: %v", err)
 	}
 
-	needle, err := openImage("assets/needle.jpg")
+	needle, err := openImage("test_images/needle.jpg")
 	if err != nil {
 		t.Fatalf("Failed to open needle image: %v", err)
 	}

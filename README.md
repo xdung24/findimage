@@ -2,7 +2,7 @@
 <br />
 <p align="center">
   <a href="https://github.com/SmilyOrg/findimg">
-    <img src="assets/logo.png" alt="Logo" width="80" height="80">
+    <img src="test_images/logo.png" alt="Logo" width="80" height="80">
   </a>
 
   <h3 align="center">findimg</h3>
@@ -107,13 +107,13 @@ or as HTML for debugging:
 Let's say we have a large image called `haystack.jpg` and we want to find
 matches of a smaller image called `needle.jpg` within it.
 
-[haystack.jpg](assets/haystack.jpg)
+[haystack.jpg](test_images/haystack.jpg)
 
-[![Haystack](assets/haystack.jpg)](assets/haystack.jpg)
+[![Haystack](test_images/haystack.jpg)](test_images/haystack.jpg)
 
-[needle.jpg](assets/needle.jpg)
+[needle.jpg](test_images/needle.jpg)
 
-[![Needle](assets/needle.jpg)](assets/needle.jpg)
+[![Needle](test_images/needle.jpg)](test_images/needle.jpg)
 
 
 We can simply run:
@@ -175,7 +175,7 @@ And then finally, let's visualize the matches in HTML:
 findimg -o html haystack.jpg needle.jpg > result.html
 ```
 
-[![result](assets/html.jpg)](assets/html.jpg)
+[![result](test_images/html.jpg)](test_images/html.jpg)
 
 ## Contributing
 

@@ -7,7 +7,6 @@ import (
 	"image"
 	"log"
 	"os"
-	"runtime/pprof"
 )
 
 func usage() {
@@ -18,14 +17,12 @@ func usage() {
 
 var (
 	output      = flag.String("o", "text", "result output format (json, text)")
-	random      = flag.Bool("random", false, "randomly pick subimage as test")
 	verbose     = flag.Bool("v", false, "verbose output")
-	cpuProfile  = flag.String("cpu-profile", "", "write cpu profile to file")
 	imgMinWidth = flag.Int("img-min-width", 0, "minimum image width")
 	imgMaxWidth = flag.Int("img-max-width", 0, "maximum image width")
 	subMinArea  = flag.Int("sub-min-area", 0, "minimum subimage area")
 	subMaxDiv   = flag.Int("sub-max-div", 0, "maximum subimage division")
-	k           = flag.Int("k", 1, "number of top matches to keep")
+	k           = flag.Int("k", 1, "number of top matches to find")
 )
 
 func main() {
@@ -38,22 +35,9 @@ func main() {
 	imgPath := flag.Arg(0)
 	subimgPath := flag.Arg(1)
 
-	if imgPath == "" || (subimgPath == "" && !*random) {
+	if imgPath == "" || subimgPath == "" {
 		usage()
 	}
-
-	if *cpuProfile != "" {
-		f, err := os.Create(*cpuProfile)
-		if err != nil {
-			log.Fatal(err)
-		}
-		defer f.Close()
-		if err := pprof.StartCPUProfile(f); err != nil {
-			log.Fatal(err)
-		}
-		defer pprof.StopCPUProfile()
-	}
-
 	// Open the input images
 	imgsrc, err := openImage(imgPath)
 	if err != nil {
@@ -61,13 +45,9 @@ func main() {
 	}
 
 	var subsrc image.Image
-	if *random {
-		subsrc = randomSubimage(imgsrc)
-	} else {
-		subsrc, err = openImage(subimgPath)
-		if err != nil {
-			log.Fatalf("failed to open image: %v", err)
-		}
+	subsrc, err = openImage(subimgPath)
+	if err != nil {
+		log.Fatalf("failed to open image: %v", err)
 	}
 
 	opts := Opts{}
@@ -97,12 +77,10 @@ func main() {
 	default:
 		for _, match := range matches {
 			fmt.Printf(
-				"%6f %4d %4d %4d %4d %4d %4d\n",
+				"%.4f %d %d %d %d\n",
 				match.Confident,
 				match.Bounds.Min.X,
 				match.Bounds.Min.Y,
-				match.Bounds.Dx(),
-				match.Bounds.Dy(),
 				match.CenterX(),
 				match.CenterY(),
 			)
